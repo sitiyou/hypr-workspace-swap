@@ -1,0 +1,60 @@
+{
+  "checkedAt": "2026-11-01T02:54:36+08:00",
+  "targetHyprland": {
+    "version": "0.57.0",
+    "commit": "0aa6745f705f2c4b0a5004eb019ef76e5bbdb426"
+  },
+  "repositories": [
+    {
+      "path": "refs/Hyprland",
+      "url": "https://github.com/hyprwm/Hyprland.git",
+      "clonedFrom": "file:///home/quy/repo/Hyprland",
+      "ref": "v0.57.0",
+      "commit": "0aa6745f705f2c4b0a5004eb019ef76e5bbdb426",
+      "commitDate": "2026-10-28T11:37:05+01:00",
+      "purpose": "Exact running-version baseline for workspace, layout, fullscreen, and plugin internals"
+    },
+    {
+      "path": "refs/hyprland-wiki",
+      "url": "https://github.com/hyprwm/hyprland-wiki.git",
+      "clonedFrom": "file:///home/quy/repo/hyprland-wiki",
+      "commit": "b0a33addc680ab10b66749e0921904fb9ec21a59",
+      "commitDate": "2026-10-30T12:11:22+01:00",
+      "purpose": "Plugin API, private member access, version pins, and nested-session development guidance"
+    },
+    {
+      "path": "refs/hy3",
+      "url": "https://github.com/outfoxxed/hy3.git",
+      "ref": "hl0.57.0",
+      "commit": "4c0199b42967b3511e3520b75cfa1f6411fb7e87",
+      "commitDate": "2026-10-30T00:37:07-07:00",
+      "declaredHyprlandCommit": "0aa6745f705f2c4b0a5004eb019ef76e5bbdb426",
+      "purpose": "Current per-space layout algorithm and tree-preserving cross-workspace movement reference"
+    },
+    {
+      "path": "refs/hyprland-plugins",
+      "url": "https://github.com/hyprwm/hyprland-plugins.git",
+      "ref": "main",
+      "commit": "d2427d4d15b36df40468f5a58bbd67cdba19835d",
+      "commitDate": "2026-10-20T17:00:53+02:00",
+      "purpose": "Official plugin registration, Lua callbacks, private member access, and hook examples; manifest has no 0.57.0 pin at this revision"
+    },
+    {
+      "path": "refs/hyprland-virtual-desktops",
+      "url": "https://github.com/levnikmyskin/hyprland-virtual-desktops.git",
+      "ref": "main",
+      "commit": "700c41f5dfab18f8bd2797e183f7657fd7ffad29",
+      "commitDate": "2026-10-29T20:01:42+01:00",
+      "hyprpmPinForTarget": "f5bd26329fab89d19a9d62c720107d275ba5b914",
+      "purpose": "Workspace lifecycle and Lua integration reference; uses multiple normal workspaces rather than normal/special content exchange"
+    }
+  ],
+  "excludedReferences": [
+    {
+      "url": "https://github.com/dawsers/hyprscroller",
+      "lastPushedAt": "2025-04-22T17:48:40Z",
+      "archived": true,
+      "reason": "Predates the target layout API; not cloned or used as an implementation baseline"
+    }
+  ]
+}
