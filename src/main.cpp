@@ -10,7 +10,7 @@ extern "C" {
 #include <stdexcept>
 #include <string_view>
 
-static_assert(std::string_view{GIT_COMMIT_HASH} == "0aa6745f705f2c4b0a5004eb019ef76e5bbdb426", "workspace-swap requires Hyprland v0.57.0 headers");
+static_assert(std::string_view{GIT_COMMIT_HASH} == "0aa6745f705f2c4b0a5004eb019ef76e5bbdb426", "hypr-workspace-swap requires Hyprland v0.57.0 headers");
 
 static std::unique_ptr<WorkspaceSwap::CBank> bank;
 
@@ -35,14 +35,14 @@ APICALL EXPORT std::string PLUGIN_API_VERSION() {
 
 APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     if (std::string_view{__hyprland_api_get_hash()} != __hyprland_api_get_client_hash())
-        throw std::runtime_error("workspace-swap: compositor and plugin headers do not match");
+        throw std::runtime_error("hypr-workspace-swap: compositor and plugin headers do not match");
 
     bank = std::make_unique<WorkspaceSwap::CBank>();
     if (!HyprlandAPI::addLuaFunction(handle, "workspace_swap", "toggle", toggle) ||
         !HyprlandAPI::addLuaFunction(handle, "workspace_swap", "bank", activeBank))
-        throw std::runtime_error("workspace-swap: could not register plugin functions");
+        throw std::runtime_error("hypr-workspace-swap: could not register plugin functions");
 
-    return {"workspace-swap", "Exchange workspaces 1-10 with special:1-special:10 without rebuilding layouts", "workspace-swap contributors", "0.1.0"};
+    return {"hypr-workspace-swap", "Exchange workspaces 1-10 with special:1-special:10 without rebuilding layouts", "hypr-workspace-swap contributors", "0.1.0"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {

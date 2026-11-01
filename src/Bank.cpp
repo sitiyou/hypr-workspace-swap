@@ -17,14 +17,14 @@ int CBank::activeBank() const {
 
 SDispatchResult CBank::toggle() {
     if (m_busy)
-        return {.success = false, .error = "workspace-swap is already exchanging workspaces"};
+        return {.success = false, .error = "hypr-workspace-swap is already exchanging workspaces"};
 
     m_busy = true;
     const Hyprutils::Utils::CScopeGuard guard([this] { m_busy = false; });
 
     const auto monitor = Desktop::focusState()->monitor();
     if (!monitor || !monitor->enabled())
-        return {.success = false, .error = "workspace-swap needs an active monitor"};
+        return {.success = false, .error = "hypr-workspace-swap needs an active monitor"};
 
     WorkspacePairs pairs;
     for (size_t index = 0; index < pairs.size(); ++index) {
@@ -48,7 +48,7 @@ SDispatchResult CBank::toggle() {
         if (pair.normal && !pair.special)
             pair.special = State::Workspace::state()->createSpecial(std::to_string(id), pair.normal->m_monitor.lock());
         if (!pair.normal || !pair.special)
-            return {.success = false, .error = "workspace-swap could not create a workspace pair"};
+            return {.success = false, .error = "hypr-workspace-swap could not create a workspace pair"};
     }
 
     for (const auto& pair : pairs) {

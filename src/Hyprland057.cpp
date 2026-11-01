@@ -57,7 +57,7 @@ static std::string layoutFor(const PHLWORKSPACE& workspace) {
 
 SDispatchResult WorkspaceSwap::Hyprland057::validate(const WorkspacePairs& pairs) {
     if (g_layoutManager->dragController()->target())
-        return {.success = false, .error = "workspace-swap cannot exchange workspaces during a window drag"};
+        return {.success = false, .error = "hypr-workspace-swap cannot exchange workspaces during a window drag"};
 
     for (const auto& pair : pairs) {
         if (pair.special && pair.special->visible())
@@ -67,23 +67,23 @@ SDispatchResult WorkspaceSwap::Hyprland057::validate(const WorkspacePairs& pairs
             if (!workspace)
                 continue;
             if (!workspace->m_monitor || !workspace->m_monitor->enabled() || !workspace->space() || !workspace->space()->algorithm())
-                return {.success = false, .error = "workspace-swap found a workspace without an enabled monitor or layout"};
+                return {.success = false, .error = "hypr-workspace-swap found a workspace without an enabled monitor or layout"};
             const auto layout = layoutFor(workspace);
             if (layout != "master" && layout != "dwindle")
-                return {.success = false, .error = "workspace-swap supports only native master and dwindle layouts"};
+                return {.success = false, .error = "hypr-workspace-swap supports only native master and dwindle layouts"};
             static auto defaultLayout = CConfigValue<Config::STRING>("general:layout");
             const auto rule = Config::workspaceRuleMgr()->getWorkspaceRuleFor(workspace).value_or(Config::CWorkspaceRule{});
             if (layout != rule.m_layout.value_or(*defaultLayout))
-                return {.success = false, .error = "workspace-swap requires the current layout to match its workspace rule"};
+                return {.success = false, .error = "hypr-workspace-swap requires the current layout to match its workspace rule"};
         }
 
         if (pair.normal && pair.special) {
             if (layoutFor(pair.normal) != layoutFor(pair.special))
-                return {.success = false, .error = "workspace-swap requires matching layouts on each normal/special pair"};
+                return {.success = false, .error = "hypr-workspace-swap requires matching layouts on each normal/special pair"};
             const auto normalRule  = Config::workspaceRuleMgr()->getWorkspaceRuleFor(pair.normal).value_or(Config::CWorkspaceRule{});
             const auto specialRule = Config::workspaceRuleMgr()->getWorkspaceRuleFor(pair.special).value_or(Config::CWorkspaceRule{});
             if (normalRule.m_layoutopts != specialRule.m_layoutopts)
-                return {.success = false, .error = "workspace-swap requires matching layout options on each normal/special pair"};
+                return {.success = false, .error = "hypr-workspace-swap requires matching layout options on each normal/special pair"};
         }
     }
 
