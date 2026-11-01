@@ -54,7 +54,7 @@ static int configure(lua_State* state) {
 }
 
 static int activeBank(lua_State* state) {
-    const auto active = bank->activeBank();
+    const auto active = bank->activeBank(lua_isnoneornil(state, 1) ? 0 : integer(state, 1));
     if (active)
         lua_pushinteger(state, active);
     else

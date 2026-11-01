@@ -24,9 +24,9 @@ int CBank::currentWorkspace() const {
     return id && *id >= 1 && *id <= 10 ? static_cast<int>(*id) : 0;
 }
 
-int CBank::activeBank() const {
-    const auto id = currentWorkspace();
-    return id ? m_states[id - 1].active : 0;
+int CBank::activeBank(int workspace) const {
+    const auto id = workspace ? workspace : currentWorkspace();
+    return id >= 1 && id <= 10 ? m_states[id - 1].active : 0;
 }
 
 std::string& CBank::storage(size_t index, int bank) {

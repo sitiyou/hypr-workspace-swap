@@ -21,7 +21,7 @@ namespace WorkspaceSwap {
         SDispatchResult cycle(int direction);
         SDispatchResult select(int bank, bool all = false);
         SDispatchResult configure(int count);
-        int             activeBank() const;
+        int             activeBank(int workspace = 0) const;
 
       private:
         struct SBankState {

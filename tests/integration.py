@@ -306,8 +306,14 @@ def independent_banks(session):
     session.evaluate('assert(hl.plugin.workspace_swap.toggle()); assert(hl.plugin.workspace_swap.bank() == 2)')
     second = session.spawn("bank-two-first")
     session.focus(2)
-    session.evaluate('assert(hl.plugin.workspace_swap.bank() == 1)')
+    session.evaluate('assert(hl.plugin.workspace_swap.bank() == 1); assert(hl.plugin.workspace_swap.bank(1) == 2); assert(hl.plugin.workspace_swap.bank(2) == 1); assert(hl.plugin.workspace_swap.bank(9) == 1); assert(hl.plugin.workspace_swap.bank(11) == nil)')
     other = session.spawn("bank-one-second")
+    banks = json.loads(session.request(
+        "j/repl local p = hl.plugin.workspace_swap; local banks = {}; "
+        "for i = 1, 10 do banks[i] = tostring(p and p.bank(i) or 0) end; "
+        "return '[' .. table.concat(banks, ',') .. ']'"
+    ))
+    assert banks == [2, 1, 1, 1, 1, 1, 1, 1, 1, 1]
     session.focus(1)
     session.evaluate('assert(hl.plugin.workspace_swap.bank() == 2)')
     assert visible(second, 1) and visible(other, 2) and not visible(first, 1)
@@ -357,7 +363,7 @@ def independent_banks(session):
     assert all(visible(name, 1) for name in (first, second, third, fourth))
     session.evaluate('assert(not hl.plugin.workspace_swap.select(3)); assert(not pcall(hl.plugin.workspace_swap.configure, { bank_count = 0 })); assert(not pcall(hl.plugin.workspace_swap.configure, { bank_count = 1.5 }))')
     session.focus(11)
-    session.evaluate('assert(not hl.plugin.workspace_swap.toggle()); assert(hl.plugin.workspace_swap.bank() == nil)')
+    session.evaluate('assert(not hl.plugin.workspace_swap.toggle()); assert(hl.plugin.workspace_swap.bank() == nil); assert(hl.plugin.workspace_swap.bank(1) == 1); assert(hl.plugin.workspace_swap.bank(2) == 1)')
     print("PASS: independent banks, mixed global selection, empty state retention, cycling, reload, bank reduction and regrowth", flush=True)
 
 
@@ -463,7 +469,7 @@ def rejection_checks(session):
     session.window_command("pin", "wss-float-a", ', action = "unset"')
     session.dispatch('hl.dsp.workspace.toggle_special("3")')
     before = stable_state(session.snapshot())
-    session.evaluate('assert(not hl.plugin.workspace_swap.toggle()); assert(hl.plugin.workspace_swap.bank() == nil)')
+    session.evaluate('assert(not hl.plugin.workspace_swap.toggle()); assert(hl.plugin.workspace_swap.bank() == nil); assert(hl.plugin.workspace_swap.bank(3) == 1)')
     session.evaluate('local ok, err = hl.plugin.workspace_swap.select_all(2); assert(not ok and err:find("close"))')
     assert stable_state(session.snapshot()) == before
     session.dispatch('hl.dsp.workspace.toggle_special("3")')
