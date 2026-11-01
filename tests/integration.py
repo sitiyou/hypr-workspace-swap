@@ -133,6 +133,18 @@ class Session:
         self.evaluate(f"assert(hl.plugin.workspace_swap.toggle()); assert(hl.plugin.workspace_swap.bank() == {bank})")
         time.sleep(0.1)
 
+    def workspace_addresses(self):
+        return {workspace["address"] for workspace in json.loads(self.request("j/workspaces"))}
+
+    def wait_for_workspaces(self, expected):
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            actual = self.workspace_addresses()
+            if actual == expected:
+                return
+            time.sleep(0.05)
+        assert actual == expected, (expected, actual)
+
     def close(self):
         for process in self.clients:
             if process.poll() is None:
@@ -167,11 +179,83 @@ def stable_state(snapshot):
     }
 
 
+def empty_workspace_lifecycle(session):
+    session.wait_for_workspaces({"1"})
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as events:
+        events.settimeout(2)
+        events.connect(str(session.instance / ".socket2.sock"))
+        session.toggle(2)
+        session.toggle(1)
+        received = b""
+        while b"workspace_swap>>1\n" not in received:
+            received += events.recv(65536)
+        assert b"createworkspace" not in received, received
+    session.wait_for_workspaces({"1"})
+    session.focus(10)
+    session.focus(1)
+    session.wait_for_workspaces({"1"})
+
+    session.spawn("sparse-a1")
+    hidden_processes = [session.clients[-1]]
+    session.focus(3)
+    for name in ("sparse-a3-1", "sparse-a3-2"):
+        session.spawn(name)
+        hidden_processes.append(session.clients[-1])
+    session.dispatch('hl.dsp.layout("mfact exact 0.67")')
+    before = stable_state(session.snapshot())
+    session.focus(1)
+    session.toggle(2)
+    session.wait_for_workspaces({"1", "special:1", "special:3"})
+    session.focus(8)
+    session.spawn("sparse-b8")
+    visible_process = session.clients[-1]
+    session.wait_for_workspaces({"8", "special:1", "special:3"})
+    for target in ("m+1", "m-1", "e+1", "e-1"):
+        session.focus(target)
+        assert json.loads(session.request("j/activeworkspace"))["id"] == 8
+
+    session.toggle(1)
+    session.wait_for_workspaces({"1", "3", "8", "special:8"})
+    after = stable_state(session.snapshot())
+    for name, client in before.items():
+        assert after[name] == client, (name, client, after[name])
+    session.focus("e+1")
+    assert json.loads(session.request("j/activeworkspace"))["id"] == 1
+    session.wait_for_workspaces({"1", "3", "special:8"})
+    for target, expected in (("e+1", 3), ("e+1", 1), ("m-1", 3), ("m+1", 1)):
+        session.focus(target)
+        assert json.loads(session.request("j/activeworkspace"))["id"] == expected
+
+    session.toggle(2)
+    session.focus(8)
+    session.wait_for_workspaces({"8", "special:1", "special:3"})
+    for process in hidden_processes:
+        process.terminate()
+        process.wait(timeout=3)
+    session.wait_for_workspaces({"8"})
+
+    session.evaluate('hl.workspace_rule({ workspace = "9", persistent = true })')
+    session.focus(9)
+    session.focus(1)
+    session.wait_for_workspaces({"1", "8", "9"})
+    session.toggle(1)
+    session.wait_for_workspaces({"1", "9", "special:8"})
+    session.toggle(2)
+    session.wait_for_workspaces({"1", "8", "9"})
+    workspaces = json.loads(session.request("j/workspaces"))
+    assert next(workspace for workspace in workspaces if workspace["address"] == "9")["ispersistent"]
+    visible_process.terminate()
+    visible_process.wait(timeout=3)
+    session.wait_for_workspaces({"1", "9"})
+    session.toggle(1)
+    session.wait_for_workspaces({"1", "9"})
+    print("PASS: no eager workspace creation, native empty-workspace cleanup and cycling, sparse layout recovery, last-window cleanup and persistent rules", flush=True)
+
+
 def basic_round_trip(session):
     session.toggle(2)
     session.toggle(1)
-    workspaces = json.loads(session.request("j/workspaces"))
-    assert sorted(w["id"] for w in workspaces if "id" in w) == list(range(1, 11)), workspaces
+    session.wait_for_workspaces({"1"})
     session.focus(1)
     for name in ("a1", "a2", "a3"):
         session.spawn(name)
@@ -199,8 +283,8 @@ def basic_round_trip(session):
     assert stable_state(session.snapshot()) == before, (before, stable_state(session.snapshot()))
     session.focus(1)
     session.dispatch('hl.dsp.focus({ workspace = "e-1" })')
-    assert json.loads(session.request("j/activeworkspace"))["id"] == 10
-    print("PASS: empty banks, ten ordinary IDs, all-pair content and master-layout round trip, native cycling", flush=True)
+    assert json.loads(session.request("j/activeworkspace"))["id"] == 2
+    print("PASS: all-pair content and master-layout round trip, native cycling over existing workspaces", flush=True)
 
 
 def floating_groups_and_fullscreen(session):
@@ -354,19 +438,37 @@ def multiple_monitors(session):
     session.toggle(1)
     assert session.snapshot()["wss-float-a"]["at"] == before["wss-float-a"]["at"]
     assert session.snapshot()["wss-float-a"]["size"] == before["wss-float-a"]["size"]
-    print("PASS: global multi-monitor swap and monitor-relative floating placement", flush=True)
+    session.focus(7)
+    sparse_clients = [session.spawn("monitor-a7-1"), session.spawn("monitor-a7-2")]
+    session.dispatch('hl.dsp.layout("mfact exact 0.63")')
+    sparse_before = stable_state(session.snapshot())
+    session.toggle(2)
+    session.focus(3)
+    session.wait_for_workspaces(session.workspace_addresses() - {"7"})
+    session.focus(1)
+    active_monitor = json.loads(session.request("j/activeworkspace"))["monitorID"]
+    assert active_monitor != sparse_before[sparse_clients[0]]["monitor"]
+    session.toggle(1)
+    sparse_after = stable_state(session.snapshot())
+    for name in sparse_clients:
+        assert sparse_after[name] == sparse_before[name], (name, sparse_before[name], sparse_after[name])
+    print("PASS: global multi-monitor swap, monitor-relative floating placement and sparse workspace monitor recovery", flush=True)
 
 
 def dwindle_round_trip(session):
     session.evaluate('hl.config({ general = { layout = "dwindle" } })')
+    for workspace in (1, 7):
+        session.focus(workspace)
+        session.dispatch('hl.dsp.layout("togglesplit")')
+        session.dispatch('hl.dsp.layout("splitratio 0.63 exact")')
+    session.focus(3)
     session.focus(1)
-    session.dispatch('hl.dsp.layout("togglesplit")')
-    session.dispatch('hl.dsp.layout("splitratio 0.63 exact")')
     before = stable_state(session.snapshot())
     session.toggle(2)
+    session.wait_for_workspaces(session.workspace_addresses() - {"7"})
     session.toggle(1)
     assert stable_state(session.snapshot()) == before
-    print("PASS: dwindle split-tree round trip", flush=True)
+    print("PASS: dwindle split-tree round trip with recreated workspace", flush=True)
 
 
 def main():
@@ -374,6 +476,8 @@ def main():
     parser.add_argument("--plugin", type=Path, required=True)
     parser.add_argument("--artifacts", type=Path, required=True)
     arguments = parser.parse_args()
+    with Session(arguments.plugin, arguments.artifacts / "empty-lifecycle") as session:
+        empty_workspace_lifecycle(session)
     with Session(arguments.plugin, arguments.artifacts) as session:
         basic_round_trip(session)
         floating_groups_and_fullscreen(session)

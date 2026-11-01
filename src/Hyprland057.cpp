@@ -116,6 +116,8 @@ void WorkspaceSwap::Hyprland057::exchange(const WorkspacePairs& pairs) {
 
     for (size_t index = 0; index < pairs.size(); ++index) {
         const auto& pair = pairs[index];
+        if (!pair.normal)
+            continue;
         focus[index]     = {pair.normal->getLastFocusedWindow(), pair.special->getLastFocusedWindow()};
         const auto delta = pair.normal->m_monitor->m_position - pair.special->m_monitor->m_position;
         if (pair.normal->m_monitor == pair.special->m_monitor)
@@ -128,6 +130,8 @@ void WorkspaceSwap::Hyprland057::exchange(const WorkspacePairs& pairs) {
     }
 
     for (const auto& pair : pairs) {
+        if (!pair.normal)
+            continue;
         pair.special->m_monitor = pair.normal->m_monitor;
         std::swap(pair.normal->m_space, pair.special->m_space);
         pair.normal->m_space->m_parent  = pair.normal;
@@ -141,10 +145,13 @@ void WorkspaceSwap::Hyprland057::exchange(const WorkspacePairs& pairs) {
     }
 
     for (size_t index = 0; index < pairs.size(); ++index) {
-        pairs[index].normal->rememberFocusedWindow(focus[index].second);
-        pairs[index].special->rememberFocusedWindow(focus[index].first);
-        pairs[index].normal->space()->recheckWorkArea();
-        pairs[index].special->space()->recheckWorkArea();
+        const auto& pair = pairs[index];
+        if (!pair.normal)
+            continue;
+        pair.normal->rememberFocusedWindow(focus[index].second);
+        pair.special->rememberFocusedWindow(focus[index].first);
+        pair.normal->space()->recheckWorkArea();
+        pair.special->space()->recheckWorkArea();
     }
 
     for (const auto& move : floats)
@@ -168,6 +175,8 @@ void WorkspaceSwap::Hyprland057::exchange(const WorkspacePairs& pairs) {
     }
 
     for (const auto& pair : pairs) {
+        if (!pair.normal)
+            continue;
         pair.normal->space()->recalculate(Layout::RECALCULATE_REASON_WORKSPACE_CHANGE);
         pair.special->space()->recalculate(Layout::RECALCULATE_REASON_WORKSPACE_CHANGE);
         g_pHyprRenderer->damageMonitor(pair.normal->m_monitor.lock());

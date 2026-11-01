@@ -1,7 +1,6 @@
 #include "Bank.hpp"
 #include "Hyprland057.hpp"
 
-#include <hyprland/src/config/shared/workspace/WorkspaceRuleManager.hpp>
 #include <hyprland/src/desktop/state/FocusState.hpp>
 #include <hyprland/src/ipc/s2/S2.hpp>
 #include <hyprland/src/output/Monitor.hpp>
@@ -40,20 +39,21 @@ SDispatchResult CBank::toggle() {
     for (size_t index = 0; index < pairs.size(); ++index) {
         auto&      pair = pairs[index];
         const auto id   = static_cast<uint32_t>(index + 1);
-        if (!pair.normal) {
-            auto targetMonitor = Config::workspaceRuleMgr()->getBoundMonitorForWS(std::to_string(id));
-            if (!targetMonitor)
-                targetMonitor = monitor;
-            pair.normal = State::Workspace::state()->createNumbered(Workspace::SWorkspaceNumberedID{id}, targetMonitor);
+        if ((!pair.normal || pair.normal->getWindowCount() == 0) && (!pair.special || pair.special->getWindowCount() == 0)) {
+            pair = {};
+            continue;
         }
+        if (!pair.normal)
+            pair.normal = State::Workspace::state()->createNumbered(Workspace::SWorkspaceNumberedID{id}, pair.special->m_monitor.lock());
         if (pair.normal && !pair.special)
             pair.special = State::Workspace::state()->createSpecial(std::to_string(id), pair.normal->m_monitor.lock());
         if (!pair.normal || !pair.special)
             return {.success = false, .error = "workspace-swap could not create a workspace pair"};
     }
 
-    m_pairs = pairs;
     for (const auto& pair : pairs) {
+        if (!pair.normal)
+            continue;
         pair.normal->ready();
         pair.special->ready();
     }

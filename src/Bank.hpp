@@ -20,9 +20,8 @@ namespace WorkspaceSwap {
         int             activeBank() const;
 
       private:
-        WorkspacePairs m_pairs;
-        int            m_activeBank = 1;
-        bool           m_busy       = false;
+        int  m_activeBank = 1;
+        bool m_busy       = false;
     };
 
 }
