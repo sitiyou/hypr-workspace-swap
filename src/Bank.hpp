@@ -4,6 +4,8 @@
 #include <hyprland/src/desktop/DesktopTypes.hpp>
 
 #include <array>
+#include <map>
+#include <string>
 
 namespace WorkspaceSwap {
 
@@ -16,12 +18,25 @@ namespace WorkspaceSwap {
 
     class CBank {
       public:
-        SDispatchResult toggle();
+        SDispatchResult cycle(int direction);
+        SDispatchResult select(int bank, bool all = false);
+        SDispatchResult configure(int count);
         int             activeBank() const;
 
       private:
-        int  m_activeBank = 1;
-        bool m_busy       = false;
+        struct SBankState {
+            int active = 1;
+            int nextSlot = 2;
+            std::map<int, std::string> storage;
+        };
+
+        int currentWorkspace() const;
+        std::string& storage(size_t index, int bank);
+        SDispatchResult selectWorkspaces(int bank, const std::array<bool, 10>& selected, bool validate = true);
+
+        std::array<SBankState, 10> m_states;
+        int  m_count = 2;
+        bool m_busy = false;
     };
 
 }

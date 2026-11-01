@@ -131,7 +131,7 @@ class Session:
         self.dispatch(f"hl.dsp.window.{command}({{ window = {self.selector(name)}{fields} }})")
 
     def toggle(self, bank):
-        self.evaluate(f"assert(hl.plugin.workspace_swap.toggle()); assert(hl.plugin.workspace_swap.bank() == {bank})")
+        self.evaluate(f"assert(hl.plugin.workspace_swap.select_all({bank})); assert(hl.plugin.workspace_swap.bank() == {bank})")
         time.sleep(0.1)
 
     def workspace_addresses(self):
@@ -188,7 +188,7 @@ def empty_workspace_lifecycle(session):
         session.toggle(2)
         session.toggle(1)
         received = b""
-        while b"workspace_swap>>1\n" not in received:
+        while b"workspace_swap>>10,1\n" not in received:
             received += events.recv(65536)
         assert b"createworkspace" not in received, received
     session.wait_for_workspaces({"1"})
@@ -292,6 +292,75 @@ def workspace_creation_callbacks(session):
     print("PASS: native empty-workspace rules preserved, bank restoration skips them and creation callbacks see restored contents", flush=True)
 
 
+def independent_banks(session):
+    session.evaluate('assert(hl.plugin.workspace_swap.configure({ bank_count = 3 }))')
+
+    def select(bank):
+        session.evaluate(f'assert(hl.plugin.workspace_swap.select({bank})); assert(hl.plugin.workspace_swap.bank() == {bank})')
+        time.sleep(0.1)
+
+    def visible(name, workspace):
+        return session.snapshot()[name]["workspace"]["address"] == str(workspace)
+
+    first = session.spawn("bank-one-first")
+    session.evaluate('assert(hl.plugin.workspace_swap.toggle()); assert(hl.plugin.workspace_swap.bank() == 2)')
+    second = session.spawn("bank-two-first")
+    session.focus(2)
+    session.evaluate('assert(hl.plugin.workspace_swap.bank() == 1)')
+    other = session.spawn("bank-one-second")
+    session.focus(1)
+    session.evaluate('assert(hl.plugin.workspace_swap.bank() == 2)')
+    assert visible(second, 1) and visible(other, 2) and not visible(first, 1)
+    select(3)
+    third = session.spawn("bank-three-first")
+    session.evaluate('assert(hl.plugin.workspace_swap.next()); assert(hl.plugin.workspace_swap.bank() == 1)')
+    assert visible(first, 1)
+    session.evaluate('assert(hl.plugin.workspace_swap.prev()); assert(hl.plugin.workspace_swap.bank() == 3)')
+    assert visible(third, 1)
+    before = stable_state(session.snapshot())
+    select(3)
+    assert stable_state(session.snapshot()) == before
+    session.toggle(2)
+    assert visible(second, 1) and not visible(other, 2)
+    session.focus(2)
+    session.evaluate('assert(hl.plugin.workspace_swap.bank() == 2)')
+    session.focus(9)
+    session.evaluate('assert(hl.plugin.workspace_swap.bank() == 2)')
+    session.focus(1)
+    session.wait_for_workspaces({"1", session.snapshot()[first]["workspace"]["address"], session.snapshot()[third]["workspace"]["address"], session.snapshot()[other]["workspace"]["address"]})
+    session.focus(9)
+    session.evaluate('assert(hl.plugin.workspace_swap.bank() == 2)')
+    session.focus(1)
+    session.evaluate('assert(hl.plugin.workspace_swap.configure({ bank_count = 3 }))')
+    assert session.request("/reload config-only").strip() == "ok"
+    session.evaluate('assert(hl.plugin.workspace_swap.bank() == 2)')
+    select(3)
+    assert visible(third, 1)
+    select(1)
+    assert visible(first, 1)
+    select(2)
+    session.evaluate('assert(hl.plugin.workspace_swap.configure({ bank_count = 2 })); assert(hl.plugin.workspace_swap.bank() == 2)')
+    assert visible(second, 1)
+    select(1)
+    assert visible(first, 1) and visible(third, 1) and not visible(second, 1)
+    select(2)
+    session.evaluate('assert(hl.plugin.workspace_swap.configure({ bank_count = 1 })); assert(hl.plugin.workspace_swap.bank() == 1)')
+    assert all(visible(name, 1) for name in (first, second, third))
+    assert visible(other, 2)
+    before = stable_state(session.snapshot())
+    session.evaluate('assert(hl.plugin.workspace_swap.next()); assert(hl.plugin.workspace_swap.prev()); assert(hl.plugin.workspace_swap.toggle())')
+    assert stable_state(session.snapshot()) == before
+    session.evaluate('assert(hl.plugin.workspace_swap.configure({ bank_count = 4 }))')
+    select(4)
+    fourth = session.spawn("bank-four-first")
+    session.evaluate('assert(hl.plugin.workspace_swap.configure({ bank_count = 2 })); assert(hl.plugin.workspace_swap.bank() == 1)')
+    assert all(visible(name, 1) for name in (first, second, third, fourth))
+    session.evaluate('assert(not hl.plugin.workspace_swap.select(3)); assert(not pcall(hl.plugin.workspace_swap.configure, { bank_count = 0 })); assert(not pcall(hl.plugin.workspace_swap.configure, { bank_count = 1.5 }))')
+    session.focus(11)
+    session.evaluate('assert(not hl.plugin.workspace_swap.toggle()); assert(hl.plugin.workspace_swap.bank() == nil)')
+    print("PASS: independent banks, mixed global selection, empty state retention, cycling, reload, bank reduction and regrowth", flush=True)
+
+
 def basic_round_trip(session):
     session.toggle(2)
     session.toggle(1)
@@ -389,10 +458,13 @@ def rejection_checks(session):
     before = stable_state(session.snapshot())
     session.evaluate('local ok, err = hl.plugin.workspace_swap.toggle(); assert(not ok and err:find("unpin")); assert(hl.plugin.workspace_swap.bank() == 1)')
     assert stable_state(session.snapshot()) == before
+    session.evaluate('local ok, err = hl.plugin.workspace_swap.select_all(2); assert(not ok and err:find("unpin")); assert(hl.plugin.workspace_swap.bank() == 1)')
+    assert stable_state(session.snapshot()) == before
     session.window_command("pin", "wss-float-a", ', action = "unset"')
     session.dispatch('hl.dsp.workspace.toggle_special("3")')
     before = stable_state(session.snapshot())
-    session.evaluate('local ok, err = hl.plugin.workspace_swap.toggle(); assert(not ok and err:find("close")); assert(hl.plugin.workspace_swap.bank() == 1)')
+    session.evaluate('assert(not hl.plugin.workspace_swap.toggle()); assert(hl.plugin.workspace_swap.bank() == nil)')
+    session.evaluate('local ok, err = hl.plugin.workspace_swap.select_all(2); assert(not ok and err:find("close"))')
     assert stable_state(session.snapshot()) == before
     session.dispatch('hl.dsp.workspace.toggle_special("3")')
     print("PASS: pinned-window and visible-private-workspace rejection without partial swaps", flush=True)
@@ -426,7 +498,7 @@ def notification_checks(session):
         events.connect(str(session.instance / ".socket2.sock"))
         session.toggle(2)
         received = b""
-        while b"workspace_swap>>2\n" not in received:
+        while b"workspace_swap>>10,2\n" not in received:
             received += events.recv(65536)
         text = received.decode()
         for address, destination in expected.items():
@@ -520,6 +592,8 @@ def main():
         empty_workspace_lifecycle(session)
     with Session(arguments.plugin, arguments.artifacts / "creation-callbacks") as session:
         workspace_creation_callbacks(session)
+    with Session(arguments.plugin, arguments.artifacts / "independent-banks") as session:
+        independent_banks(session)
     with Session(arguments.plugin, arguments.artifacts) as session:
         basic_round_trip(session)
         floating_groups_and_fullscreen(session)
