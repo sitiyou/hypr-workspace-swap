@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import shlex
 import shutil
 import socket
 import subprocess
@@ -252,6 +253,45 @@ def empty_workspace_lifecycle(session):
     print("PASS: no eager workspace creation, native empty-workspace cleanup and cycling, sparse layout recovery, last-window cleanup and persistent rules", flush=True)
 
 
+def workspace_creation_callbacks(session):
+    marker = session.runtime / "on-created-empty-fired"
+    command = "touch " + shlex.quote(str(marker))
+    for workspace in ("3", "special:3"):
+        session.evaluate("hl.workspace_rule({ workspace = " + json.dumps(workspace) + ", on_created_empty = " + json.dumps(command) + " })")
+    session.focus(3)
+    deadline = time.monotonic() + 5
+    while not marker.exists() and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert marker.exists(), "native empty-workspace creation must still run its rule"
+    name = session.spawn("creation-callback")
+    session.focus(1)
+    session.evaluate('''
+        _G.wss_created = {}
+        _G.wss_created_subscription = hl.on("workspace.created", function(ws)
+            table.insert(_G.wss_created, {
+                address = ws.addressable_name,
+                empty = ws.is_empty,
+                windows = ws.windows,
+                bank = hl.plugin.workspace_swap.bank(),
+            })
+        end)
+    ''')
+    marker.unlink()
+    for count, (bank, destination) in enumerate(((2, "special:3"), (1, "3")), start=1):
+        session.toggle(bank)
+        session.wait_for_workspaces({"1", destination})
+        assert not marker.exists(), "bank restoration must not run on_created_empty"
+        session.evaluate(f'''
+            assert(#wss_created == {count})
+            local event = wss_created[{count}]
+            assert(event.address == {json.dumps(destination)})
+            assert(not event.empty and event.windows == 1)
+            assert(event.bank == {bank})
+        ''')
+        assert session.snapshot()[name]["workspace"]["address"] == destination
+    print("PASS: native empty-workspace rules preserved, bank restoration skips them and creation callbacks see restored contents", flush=True)
+
+
 def basic_round_trip(session):
     session.toggle(2)
     session.toggle(1)
@@ -478,6 +518,8 @@ def main():
     arguments = parser.parse_args()
     with Session(arguments.plugin, arguments.artifacts / "empty-lifecycle") as session:
         empty_workspace_lifecycle(session)
+    with Session(arguments.plugin, arguments.artifacts / "creation-callbacks") as session:
+        workspace_creation_callbacks(session)
     with Session(arguments.plugin, arguments.artifacts) as session:
         basic_round_trip(session)
         floating_groups_and_fullscreen(session)

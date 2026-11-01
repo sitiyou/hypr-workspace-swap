@@ -44,12 +44,18 @@ SDispatchResult CBank::toggle() {
             continue;
         }
         if (!pair.normal)
-            pair.normal = State::Workspace::state()->createNumbered(Workspace::SWorkspaceNumberedID{id}, pair.special->m_monitor.lock());
+            pair.normal = State::Workspace::state()->createNumbered(Workspace::SWorkspaceNumberedID{id}, pair.special->m_monitor.lock(), {}, false);
         if (pair.normal && !pair.special)
-            pair.special = State::Workspace::state()->createSpecial(std::to_string(id), pair.normal->m_monitor.lock());
+            pair.special = State::Workspace::state()->createSpecial(std::to_string(id), pair.normal->m_monitor.lock(), false);
         if (!pair.normal || !pair.special)
             return {.success = false, .error = "hypr-workspace-swap could not create a workspace pair"};
     }
+
+    if (const auto result = Hyprland057::validate(pairs); !result.success)
+        return result;
+
+    m_activeBank = 3 - m_activeBank;
+    Hyprland057::exchange(pairs);
 
     for (const auto& pair : pairs) {
         if (!pair.normal)
@@ -58,11 +64,6 @@ SDispatchResult CBank::toggle() {
         pair.special->ready();
     }
 
-    if (const auto result = Hyprland057::validate(pairs); !result.success)
-        return result;
-
-    m_activeBank = 3 - m_activeBank;
-    Hyprland057::exchange(pairs);
     IPC::Socket2::sock()->postEvent({.event = "workspace_swap", .data = std::to_string(m_activeBank)});
     return {};
 }
