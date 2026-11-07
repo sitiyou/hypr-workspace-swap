@@ -3,7 +3,7 @@ name = "hypr-workspace-swap"
 authors = ["sitiyou"]
 
 [hypr-workspace-swap]
-description = "Exchange workspace banks without rebuilding layouts (Hyprland 0.57.0)"
+description = "Exchange workspace banks without rebuilding layouts (Hyprland 0.57.1)"
 authors = ["sitiyou"]
 output = "build/hypr-workspace-swap.so"
 build = [

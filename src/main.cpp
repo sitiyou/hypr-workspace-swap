@@ -12,7 +12,7 @@ extern "C" {
 #include <stdexcept>
 #include <string_view>
 
-static_assert(std::string_view{GIT_COMMIT_HASH} == "0aa6745f705f2c4b0a5004eb019ef76e5bbdb426", "hypr-workspace-swap requires Hyprland v0.57.0 headers");
+static_assert(std::string_view{GIT_COMMIT_HASH} == "acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9", "hypr-workspace-swap requires Hyprland v0.57.1 headers");
 
 static std::unique_ptr<WorkspaceSwap::CBank> bank;
 

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.25)
 project(hypr-workspace-swap VERSION 0.1.0 LANGUAGES CXX)
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(HYPRLAND REQUIRED IMPORTED_TARGET hyprland=0.57.0)
+pkg_check_modules(HYPRLAND REQUIRED IMPORTED_TARGET hyprland=0.57.1)
 pkg_check_modules(LUA REQUIRED IMPORTED_TARGET lua)
 
 add_library(hypr-workspace-swap SHARED

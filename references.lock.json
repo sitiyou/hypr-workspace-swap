@@ -1,17 +1,17 @@
 {
   "checkedAt": "2026-11-01T02:54:36+08:00",
   "targetHyprland": {
-    "version": "0.57.0",
-    "commit": "0aa6745f705f2c4b0a5004eb019ef76e5bbdb426"
+    "version": "0.57.1",
+    "commit": "acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9"
   },
   "repositories": [
     {
       "path": "refs/Hyprland",
       "url": "https://github.com/hyprwm/Hyprland.git",
       "clonedFrom": "file:///home/quy/repo/Hyprland",
-      "ref": "v0.57.0",
-      "commit": "0aa6745f705f2c4b0a5004eb019ef76e5bbdb426",
-      "commitDate": "2026-10-28T11:37:05+01:00",
+      "ref": "v0.57.1",
+      "commit": "acc1aa0bfd4bd575dcb0f76c35ccf12b660a1ab9",
+      "commitDate": "2026-11-03T09:45:48Z",
       "purpose": "Exact running-version baseline for workspace, layout, fullscreen, and plugin internals"
     },
     {
